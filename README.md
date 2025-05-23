@@ -36,8 +36,8 @@ Following Treblle's **7 Key Lessons for Building Great REST APIs**:
 ### 1. Clone and Install
 
 ```bash
-git clone <repository-url>
-cd treblle-express-boilerplate
+git clone https://github.com/Rahulkhinchi03/express-api-starter-kit.git
+cd express-api-starter-kit
 npm install
 ```
 
