@@ -104,7 +104,6 @@ POST /api/v1/auth/register
 Content-Type: application/json
 
 {
-  "name": "John Doe",
   "email": "john@example.com", 
   "password": "SecurePass123!"
 }
@@ -188,7 +187,7 @@ Treblle Aspen provides an excellent way to test your API:
 # Register a user
 curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test User","email":"test@example.com","password":"TestPass123!"}'
+  -d '{"email":"test@example.com","password":"TestPass123!"}'
 
 # Login and get token
 curl -X POST http://localhost:3000/api/v1/auth/login \
@@ -203,7 +202,7 @@ curl -X POST http://localhost:3000/api/v1/classify/image \
 
 ## 🌐 Deployment
 
-### Using ngrok (for demos)
+### Using ngrok
 
 ```bash
 # Install ngrok
@@ -259,23 +258,6 @@ treblle-express-ollama-classifier/
 ├── Dockerfile                # Container configuration
 └── README.md                # This file
 ```
-
-### Best Practices Implemented
-
-- **Input Validation** - All inputs validated and sanitized
-- **Error Handling** - Comprehensive error responses
-- **Security** - Multiple layers of protection
-- **Performance** - Optimized for speed and efficiency
-- **Monitoring** - Complete observability with Treblle
-- **Documentation** - Self-documenting endpoints
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if needed
-5. Submit a pull request
 
 **Built with ❤️ by the Treblle DevRel Team**
 
