@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
 const treblle = require('@treblle/express');
+const path = require('path'); // Add this import
 require('dotenv').config();
 
 // Import routes
@@ -31,7 +32,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Add unsafe-inline for embedded scripts
       imgSrc: ["'self'", "data:", "https:"],
     },
   },
@@ -62,6 +63,9 @@ app.use(cors(corsOptions));
 
 // 3. PERFORMANCE: Compression and optimization
 app.use(compression());
+
+// Serve static files from public directory
+app.use(express.static('public'));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -143,6 +147,11 @@ app.get('/api/v1', (req, res) => {
       dashboard: 'https://app.treblle.com'
     }
   });
+});
+
+// Serve the frontend - REPLACE the long embedded HTML with this simple route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Handle 404 errors

@@ -27,14 +27,6 @@ const server = app.listen(PORT, () => {
 
 🔧 Environment: ${process.env.NODE_ENV || 'development'}
 📊 Treblle Monitoring: ${process.env.TREBLLE_API_KEY ? '✅ Enabled' : '❌ Disabled'}
-
-📚 Next steps:
-1. Set up your .env file with Treblle credentials
-2. Start Ollama with: ollama run moondream
-3. Test the API with the provided examples
-4. Check your Treblle dashboard for real-time monitoring
-
-Happy coding! 🎉
   `);
 });
 

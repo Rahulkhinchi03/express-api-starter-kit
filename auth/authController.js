@@ -1,9 +1,43 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
+const fs = require('fs');
+const path = require('path');
 
-// In-memory user store (replace with database in production)
-const users = new Map();
+// File-based user storage
+const USERS_FILE = path.join(__dirname, '../data/users.json');
+
+// Ensure data directory exists
+const dataDir = path.dirname(USERS_FILE);
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Load users from file
+function loadUsers() {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      const data = fs.readFileSync(USERS_FILE, 'utf8');
+      return new Map(Object.entries(JSON.parse(data)));
+    }
+  } catch (error) {
+    console.error('Error loading users:', error.message);
+  }
+  return new Map();
+}
+
+// Save users to file
+function saveUsers(users) {
+  try {
+    const data = JSON.stringify(Object.fromEntries(users), null, 2);
+    fs.writeFileSync(USERS_FILE, data, 'utf8');
+  } catch (error) {
+    console.error('Error saving users:', error.message);
+  }
+}
+
+// Initialize users from file
+const users = loadUsers();
 
 // Generate JWT token
 const generateToken = (userId, email) => {
@@ -22,7 +56,8 @@ const register = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         error: 'Validation failed',
-        details: errors.array()
+        details: errors.array(),
+        message: 'Please check your input and try again'
       });
     }
 
@@ -32,12 +67,12 @@ const register = async (req, res, next) => {
     if (users.has(email)) {
       return res.status(409).json({
         error: 'User already exists',
-        message: 'A user with this email already exists'
+        message: 'A user with this email already exists. Please try logging in instead.'
       });
     }
 
-    // Hash password
-    const saltRounds = 12;
+    // Hash password with lower salt rounds for faster registration
+    const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create user
@@ -50,10 +85,14 @@ const register = async (req, res, next) => {
       createdAt: new Date().toISOString()
     };
 
+    // Save user to memory and file
     users.set(email, user);
+    saveUsers(users);
 
     // Generate token
     const token = generateToken(userId, email);
+
+    console.log(`✅ New user registered: ${email}`);
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -68,6 +107,7 @@ const register = async (req, res, next) => {
     });
 
   } catch (error) {
+    console.error('Registration error:', error.message);
     next(error);
   }
 };
@@ -80,7 +120,8 @@ const login = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         error: 'Validation failed',
-        details: errors.array()
+        details: errors.array(),
+        message: 'Please provide valid email and password'
       });
     }
 
@@ -91,7 +132,7 @@ const login = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         error: 'Invalid credentials',
-        message: 'Email or password is incorrect'
+        message: 'No account found with this email. Please register first.'
       });
     }
 
@@ -100,12 +141,14 @@ const login = async (req, res, next) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         error: 'Invalid credentials',
-        message: 'Email or password is incorrect'
+        message: 'Incorrect password. Please try again.'
       });
     }
 
     // Generate token
     const token = generateToken(user.id, email);
+
+    console.log(`✅ User logged in: ${email}`);
 
     res.status(200).json({
       message: 'Login successful',
@@ -119,6 +162,7 @@ const login = async (req, res, next) => {
     });
 
   } catch (error) {
+    console.error('Login error:', error.message);
     next(error);
   }
 };
@@ -149,8 +193,20 @@ const getProfile = async (req, res, next) => {
   }
 };
 
+// Get user stats (for debugging)
+const getStats = () => {
+  return {
+    totalUsers: users.size,
+    userEmails: Array.from(users.keys()),
+    storageFile: USERS_FILE
+  };
+};
+
+console.log(`📊 User storage initialized: ${users.size} users loaded`);
+
 module.exports = {
   register,
   login,
-  getProfile
+  getProfile,
+  getStats
 };

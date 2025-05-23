@@ -6,17 +6,18 @@ const { register, login, getProfile } = require('./authController');
 
 const router = express.Router();
 
-// Validation rules
+// Validation rules - UPDATED with more user-friendly password requirements
 const registerValidation = [
   body('email')
     .isEmail()
     .normalizeEmail()
     .withMessage('Please provide a valid email address'),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+    // Remove the complex regex validation - much simpler now!
+    .matches(/^(?=.*[a-zA-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one letter and one number'),
   body('name')
     .trim()
     .isLength({ min: 2, max: 50 })
@@ -38,7 +39,7 @@ router.post('/register', authRateLimiter, registerValidation, register);
 router.post('/login', authRateLimiter, loginValidation, login);
 router.get('/profile', authMiddleware, getProfile);
 
-// Auth info endpoint
+// Auth info endpoint - UPDATED to reflect new password requirements
 router.get('/', (req, res) => {
   res.status(200).json({
     endpoints: {
@@ -48,7 +49,7 @@ router.get('/', (req, res) => {
         description: 'Register a new user',
         body: {
           email: 'string (valid email)',
-          password: 'string (min 8 chars, must include uppercase, lowercase, number, special char)',
+          password: 'string (min 6 chars, must include at least one letter and one number)',
           name: 'string (2-50 characters)'
         }
       },
@@ -74,6 +75,11 @@ router.get('/', (req, res) => {
       window: '15 minutes',
       maxRequests: 5,
       message: 'Authentication endpoints are rate limited for security'
+    },
+    passwordRequirements: {
+      minLength: 6,
+      mustContain: ['at least one letter', 'at least one number'],
+      examples: ['password123', 'mypass1', 'test123', 'hello1']
     }
   });
 });

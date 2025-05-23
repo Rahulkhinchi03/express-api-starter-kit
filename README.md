@@ -37,7 +37,7 @@ Following Treblle's **7 Key Lessons for Building Great REST APIs**:
 
 ```bash
 git clone <repository-url>
-cd treblle-express-ollama-classifier
+cd treblle-express-boilerplate
 npm install
 ```
 
@@ -233,36 +233,32 @@ docker run -p 3000:3000 --env-file .env treblle-express-api
 ### Project Structure
 
 ```
-treblle-express-api-starter-kit/
-├── app.js                 # Main application setup
-├── server.js              # Server entry point
+treblle-express-ollama-classifier/
+├── public/
+│   └── index.html             # Beautiful web frontend
+├── app.js                     # Main application setup
+├── server.js                  # Server entry point
+├── data/
+│   └── users.json            # Persistent user storage
 ├── routes/
-│   └── classifyRoutes.js  # Classification endpoints
+│   └── classifyRoutes.js     # Classification endpoints
 ├── controllers/
 │   └── classifyController.js # Classification logic
 ├── services/
-│   └── ollamaService.js   # Ollama integration
+│   └── ollamaService.js      # Ollama integration
 ├── auth/
-│   ├── authController.js  # Authentication logic
-│   └── authRoutes.js      # Auth endpoints
+│   ├── authController.js     # Authentication logic
+│   └── authRoutes.js         # Auth endpoints
 ├── middleware/
-│   ├── authMiddleware.js  # JWT verification
-│   ├── rateLimit.js       # Rate limiting
-│   ├── ddos.js           # DDoS protection
-│   └── errorHandler.js    # Global error handling
+│   ├── authMiddleware.js     # JWT verification
+│   ├── rateLimit.js          # Rate limiting configs
+│   ├── ddos.js              # DDoS protection
+│   └── errorHandler.js       # Global error handling
 ├── config/
-│   └── .env.example       # Environment template
-├── Dockerfile             # Container configuration
-└── README.md             # This file
+│   └── .env.example          # Environment template
+├── Dockerfile                # Container configuration
+└── README.md                # This file
 ```
-
-### Adding New Features
-
-1. **New Routes**: Add to appropriate route files
-2. **Middleware**: Create in `middleware/` directory
-3. **Services**: Add external integrations to `services/`
-4. **Validation**: Use express-validator for input validation
-5. **Error Handling**: Use the global error handler
 
 ### Best Practices Implemented
 
