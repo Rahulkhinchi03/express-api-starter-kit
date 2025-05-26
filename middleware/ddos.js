@@ -4,13 +4,11 @@ const slowDown = require('express-slow-down');
 const ddosProtection = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 50, // allow 50 requests per 15 minutes at full speed
-  delayMs: 500, // slow down subsequent requests by 500ms per request
+  delayMs: () => 500, // Use function format for v2.x compatibility
   maxDelayMs: 20000, // maximum delay of 20 seconds
-  headers: true, // Send custom rate limit header with limit and remaining
-  onLimitReached: (req, res, options) => {
-    console.warn(`DDoS protection triggered for IP: ${req.ip}`);
+  validate: {
+    delayMs: false // Disable the warning
   },
-  // Custom error response
   skip: (req, res) => {
     // Skip for health checks
     return req.path === '/health';

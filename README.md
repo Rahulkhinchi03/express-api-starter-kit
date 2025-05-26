@@ -1,47 +1,53 @@
-# 🚀 Treblle Express Ollama Classifier API
+# 🚀 Treblle Express API Starter Kit
 
-A production-ready Express.js API starter kit featuring AI-powered image classification with [Ollama Moondream](https://ollama.com/library/moondream), complete authentication, security, and monitoring with Treblle.
+A **production-ready Express.js API** featuring PostgreSQL database integration, JWT authentication, comprehensive monitoring with [Treblle](https://treblle.com), and AI-powered image classification using [Ollama](https://ollama.com).
 
 ## ✨ Features
 
-- 🔍 **AI Image Classification** - Powered by [Ollama Moondream](https://ollama.com/library/moondream) for local image analysis
-- 🔐 **JWT Authentication** - Secure user registration and login
-- 🛡️ **Enterprise Security** - Helmet, CORS, rate limiting, and DDoS protection
-- 📊 **Real-time Monitoring** - [Treblle integration](https://docs.treblle.com/integrations/javascript/express/) for API observability
-- 🚦 **Rate Limiting** - Intelligent request limiting based on endpoint sensitivity
+- 🗃️ **PostgreSQL Database** - Production-ready with connection pooling, migrations, and optimized queries
+- 🔐 **JWT Authentication** - Secure user registration, login, and API key management
+- 🛡️ **Enterprise Security** - Helmet, CORS, rate limiting, input validation, and DDoS protection
+- 📊 **Real-time Monitoring** - Complete API observability with [Treblle integration](https://docs.treblle.com/integrations/javascript/express/)
+- 🤖 **AI Image Classification** - Powered by [Ollama Moondream](https://ollama.com/library/moondream) for local image analysis
+- 🚦 **Intelligent Rate Limiting** - Endpoint-specific limits based on resource requirements
 - 📸 **Flexible Image Input** - Support for file uploads and base64 strings
-- 🐳 **Docker Ready** - Containerized for consistent deployments
-- 📚 **Auto Documentation** - Self-documenting API endpoints by Treblle [API Documentation](https://treblle.com/product/api-documentation)
+- 🐳 **Docker Ready** - Containerized with health checks for consistent deployments
+- 📚 **Auto Documentation** - Self-documenting API endpoints via [Treblle API Documentation](https://treblle.com/product/api-documentation)
 
-## 🏗️ Architecture
-
-Following Treblle's **7 Key Lessons for Building Great REST APIs**:
-
-1. **Design** - RESTful routes, proper HTTP methods, semantic naming
-2. **Security** - HTTPS, authentication, input validation, secure headers
-3. **Performance** - Compression, caching, optimized database queries
-4. **Documentation** - Self-documenting endpoints with examples
-5. **Adoption** - Easy setup, clear examples, developer-friendly
-6. **Governance** - Consistent patterns, versioning, validation
-7. **Monetization** - Rate limiting, usage tracking, scalable architecture
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
-- Ollama installed and running
-- Treblle account (get one at [treblle.com](https://treblle.com))
+- **Node.js 18+**
+- **PostgreSQL 12+**
+- **Ollama** installed and running
+- **Treblle account** (get one at [treblle.com](https://treblle.com))
 
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/Rahulkhinchi03/express-api-starter-kit.git
+git clone https://github.com/Treblle/express-api-starter-kit.git
 cd express-api-starter-kit
 npm install
 ```
 
-### 2. Environment Setup
+### 2. Database Setup
+
+```bash
+# Install PostgreSQL (Ubuntu/Debian)
+sudo apt-get install postgresql postgresql-contrib
+
+# Create database and user
+sudo -u postgres psql
+postgres=# CREATE DATABASE treblle_api;
+postgres=# CREATE USER treblle_user WITH PASSWORD 'secure_password';
+postgres=# GRANT ALL PRIVILEGES ON DATABASE treblle_api TO treblle_user;
+postgres=# \q
+```
+
+### 3. Environment Configuration
 
 ```bash
 cp .env.example .env
@@ -50,6 +56,14 @@ cp .env.example .env
 Update `.env` with your credentials:
 
 ```bash
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=treblle_api
+DB_USER=treblle_user
+DB_PASSWORD=secure_password
+DB_POOL_MAX=20
+
 # Treblle Configuration
 TREBLLE_API_KEY=your_treblle_api_key_here
 TREBLLE_PROJECT_ID=your_treblle_project_id_here
@@ -67,7 +81,7 @@ OLLAMA_API_URL=http://localhost:11434
 OLLAMA_MODEL=moondream
 ```
 
-### 3. Start Ollama
+### 4. Start Ollama
 
 ```bash
 # Pull the Moondream model
@@ -77,188 +91,382 @@ ollama pull moondream
 ollama list
 ```
 
-### 4. Start the API
+### 5. Start the API
 
 ```bash
-# Development mode
+# Development mode (with auto-restart)
 npm run dev
 
 # Production mode
 npm start
 ```
 
-🎉 **Your API is now running at http://localhost:3000**
+🎉 **Your API is now running at <http://localhost:3000>**
 
-## 📚 API Documentation
+---
 
-### Base URL
+## 🏗️ API Design & Architecture
+
+This API follows **Treblle's 7 Key Lessons for Building Great REST APIs**, ensuring enterprise-grade quality and developer experience.
+
+### Core Architecture Principles
+
+#### 1. **Design** - RESTful Excellence
+
+- **Resource-based URLs**: `/api/v1/users`, `/api/v1/classify/image`
+- **HTTP Methods**: Proper GET, POST, PUT, DELETE usage
+- **Status Codes**: Meaningful 2xx, 4xx, 5xx responses
+- **API Versioning**: Future-proof with `/v1/` namespace
+
+#### 2. **Security** - Multi-layered Protection
+
+- **Authentication**: JWT tokens with configurable expiration
+- **Authorization**: Role-based access control
+- **Input Validation**: Express-validator with custom rules
+- **Rate Limiting**: Endpoint-specific limits (5/15min for auth, 10/5min for AI)
+- **Headers**: Helmet.js security headers
+- **CORS**: Configurable cross-origin policies
+- **DDoS Protection**: Express-slow-down middleware
+
+#### 3. **Performance** - Optimized for Scale
+
+- **Database**: Connection pooling with PostgreSQL
+- **Compression**: Gzip compression for responses
+- **Caching**: Strategic query optimization
+- **Indexing**: Database indexes on frequently queried fields
+
+#### 4. **Documentation** - Self-Documenting
+
+- **Treblle Integration**: Automatic API documentation generation
+- **OpenAPI Compatible**: Schema-first approach
+- **Interactive Examples**: Live API testing capabilities
+
+### Database Schema
+
+```sql
+-- Users table with authentication
+users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  api_key VARCHAR(64) UNIQUE NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_login TIMESTAMP
+);
+
+-- Classifications table for AI results
+classifications (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  image_hash VARCHAR(64) NOT NULL,
+  image_size INTEGER NOT NULL,
+  image_type VARCHAR(50) NOT NULL,
+  prompt TEXT NOT NULL,
+  result TEXT,
+  confidence VARCHAR(20),
+  model_used VARCHAR(100) NOT NULL,
+  processing_time_ms INTEGER,
+  status VARCHAR(20) DEFAULT 'completed',
+  error_message TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- API usage tracking for analytics
+api_usage (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  endpoint VARCHAR(255) NOT NULL,
+  method VARCHAR(10) NOT NULL,
+  status_code INTEGER NOT NULL,
+  response_time_ms INTEGER,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
-http://localhost:3000/api/v1
+
+### API Endpoints
+
+#### Authentication Endpoints
+
+```http
+POST   /api/v1/auth/register     # User registration
+POST   /api/v1/auth/login        # User login
+GET    /api/v1/auth/profile      # Get user profile
+PUT    /api/v1/auth/profile      # Update profile
+POST   /api/v1/auth/change-password  # Change password
+POST   /api/v1/auth/regenerate-api-key  # Regenerate API key
 ```
 
-### Authentication
+#### Classification Endpoints
 
-#### Register User
+```http
+POST   /api/v1/classify/image     # Classify image (AI)
+GET    /api/v1/classify/status    # Service health & stats
+GET    /api/v1/classify/history   # User's classification history
+GET    /api/v1/classify/search    # Search classifications
+GET    /api/v1/classify/samples   # API usage examples
+DELETE /api/v1/classify/:id       # Delete classification
+```
+
+#### Utility Endpoints
+
+```http
+GET    /api/v1/health            # API health check
+GET    /api/v1/stats             # System statistics (admin)
+```
+
+---
+
+## 📊 Treblle Integration & Monitoring
+
+### Real-time API Observability
+
+The API automatically tracks **all requests** through Treblle, providing:
+
+- 📈 **Performance Metrics** - Response times, error rates, throughput
+- 🔍 **Request/Response Logging** - Complete payload inspection
+- 🚨 **Error Tracking** - Detailed error analysis and alerting
+- 📱 **User Behavior** - API usage patterns and trends
+- 🌍 **Geographic Analytics** - Request distribution mapping
+
+### Treblle Dashboard Screenshots
+
+![Treblle API Overview](https://docs.treblle.com/images/dashboard-overview.png)
+
+*Real-time API performance monitoring with detailed metrics and insights*
+
+![Treblle Request Details](https://docs.treblle.com/images/request-details.png)
+
+*Comprehensive request/response analysis with payload inspection*
+
+![Treblle Error Tracking](https://docs.treblle.com/images/error-tracking.png)
+
+*Advanced error tracking with stack traces and context*
+
+### Setup Treblle Monitoring
+
+1. **Create Account**: Visit [treblle.com](https://treblle.com) and sign up
+2. **Get API Keys**: Create a new project and copy your API key & Project ID
+3. **Configure Environment**: Add keys to your `.env` file
+4. **Deploy & Monitor**: Treblle automatically starts monitoring all API calls
+
 ```bash
-POST /api/v1/auth/register
-Content-Type: application/json
-
-{
-  "email": "john@example.com", 
-  "password": "SecurePass123!"
-}
+# .env configuration
+TREBLLE_API_KEY=your_treblle_api_key_here
+TREBLLE_PROJECT_ID=your_treblle_project_id_here
 ```
 
-#### Login User
+The integration is **zero-configuration** - simply restart your API and visit your Treblle dashboard to see live data flowing in.
+
+---
+
+## 🤖 AI Image Classification Logic
+
+### Ollama Moondream Integration
+
+The AI classification feature uses **Ollama with the Moondream model** for local, private image analysis. This approach ensures:
+
+- 🔒 **Privacy**: Images never leave your server
+- ⚡ **Speed**: Local processing without API calls
+- 💰 **Cost-effective**: No per-request charges
+- 🛡️ **Reliability**: No external dependencies
+
+### How It Works
+
+#### 1. Image Processing Pipeline
+
+```javascript
+// 1. Image Input (File Upload or Base64)
+const imageBuffer = req.file.buffer || Buffer.from(base64, 'base64');
+
+// 2. Generate Hash for Deduplication
+const imageHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
+
+// 3. Create Database Record
+const classification = await Classification.create({
+  userId, imageHash, imageSize, imageType, prompt,
+  status: 'processing'
+});
+
+// 4. Send to Ollama
+const result = await ollamaService.classifyImage(imageBase64, prompt);
+
+// 5. Store Results
+await classification.updateResults(result);
+```
+
+#### 2. Moondream Model Capabilities
+
+- **Vision-Language Model**: Understands both images and text prompts
+- **Object Detection**: Identifies objects, people, scenes, and contexts
+- **Descriptive Analysis**: Provides detailed descriptions beyond simple labels
+- **Custom Prompts**: Responds to specific questions about images
+- **Multi-format Support**: JPEG, PNG, GIF, WebP
+
+#### 3. Example Classifications
+
+**Input**: Product photo of a wine glass
+**Prompt**: "What type of glass is this? Be specific about style and purpose."
+**Result**: "This is a burgundy wine glass with a large, rounded bowl designed for red wines. The wide bowl allows for proper aeration and the stem prevents hand warming of the wine."
+
+**Input**: Street scene photo
+**Prompt**: "Describe the scene and atmosphere"
+**Result**: "A busy urban street during golden hour with pedestrians walking along the sidewalk. Modern buildings line both sides with warm lighting from storefronts creating an inviting evening atmosphere."
+
+---
+
+## 📚 Usage Examples
+
+### Authentication Flow
+
 ```bash
-POST /api/v1/auth/login
-Content-Type: application/json
+# 1. Register a new user
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "developer@example.com",
+    "password": "SecurePass123!",
+    "name": "Developer"
+  }'
 
+# Response:
 {
-  "email": "john@example.com",
-  "password": "SecurePass123!"
-}
-```
-
-Response includes JWT token:
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "message": "User registered successfully",
+  "user": {
+    "id": 1,
+    "email": "developer@example.com",
+    "name": "Developer",
+    "api_key": "a1b2c3d4e5f6...",
+    "created_at": "2024-01-15T10:30:00Z"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIs...",
   "expiresIn": "24h"
 }
+
+# 2. Login existing user
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "developer@example.com",
+    "password": "SecurePass123!"
+  }'
 ```
 
-### Image Classification
+### Image Classification Examples
 
-#### Classify Image (File Upload)
+#### File Upload Method
+
 ```bash
-POST /api/v1/classify/image
-Authorization: Bearer <your-token>
-Content-Type: multipart/form-data
+# Classify an uploaded image file
+curl -X POST http://localhost:3000/api/v1/classify/image \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "image=@path/to/your/image.jpg" \
+  -F "prompt=What type of wine glass is this?"
 
-# Form data with "image" field containing image file
-```
-
-#### Classify Image (Base64)
-```bash
-POST /api/v1/classify/image
-Authorization: Bearer <your-token>  
-Content-Type: application/json
-
-{
-  "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
-  "prompt": "What type of glass is this? Be specific."
-}
-```
-
-#### Response
-```json
+# Response:
 {
   "success": true,
   "result": {
-    "classification": "A clear glass wine glass with a long stem",
+    "classification": "This is a burgundy wine glass with a large, rounded bowl designed for red wines. The wide bowl allows for proper aeration of the wine.",
     "confidence": "High",
-    "detectedObjects": "wine glass, stemware",
     "model": "moondream",
-    "prompt": "What object is in this image?"
+    "prompt": "What type of wine glass is this?"
   },
   "metadata": {
-    "processingTime": "1250ms",
-    "userId": "1234567890",
-    "timestamp": "2024-03-15T10:30:00.000Z",
-    "imageSize": "45678 bytes"
+    "processingTime": "1247ms",
+    "userId": 1,
+    "classificationId": 42,
+    "timestamp": "2024-01-15T10:35:22Z",
+    "imageSize": "156 KB",
+    "imageHash": "a7f3c8e9d2b1f4a6"
   }
 }
 ```
 
-## 🧪 Testing with Treblle Aspen
+#### Base64 Method
 
-Treblle Aspen provides an excellent way to test your API:
+```javascript
+// JavaScript example with base64 image
+const classifyImage = async (imageBase64, prompt) => {
+  const response = await fetch('http://localhost:3000/api/v1/classify/image', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${yourJwtToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      image: imageBase64, // or data:image/jpeg;base64,<base64-string>
+      prompt: prompt || "Describe this image in detail"
+    })
+  });
+  
+  return await response.json();
+};
+```
 
-1. Visit [aspen.treblle.com](https://aspen.treblle.com)
-2. Import the API using the base URL: `http://localhost:3000/api/v1`
-3. Test all endpoints with the interactive interface
-4. View real-time monitoring data in your Treblle dashboard
-
-### Sample cURL Commands
+### Getting Classification History
 
 ```bash
-# Register a user
-curl -X POST http://localhost:3000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"TestPass123!"}'
+# Get user's classification history
+curl -X GET "http://localhost:3000/api/v1/classify/history?limit=10&offset=0" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
-# Login and get token
-curl -X POST http://localhost:3000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"TestPass123!"}'
+# Search classifications
+curl -X GET "http://localhost:3000/api/v1/classify/search?q=wine+glass&limit=5" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
-# Classify an image
-curl -X POST http://localhost:3000/api/v1/classify/image \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -F "image=@path/to/your/image.jpg"
+# Get specific classification
+curl -X GET "http://localhost:3000/api/v1/classify/42" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-## 🌐 Deployment
-
-### Using ngrok
+### Health Check & Status
 
 ```bash
-# Install ngrok
-npm install -g ngrok
+# Check API health
+curl -X GET http://localhost:3000/api/v1/health
 
-# Start your API
-npm start
+# Get classification service status
+curl -X GET http://localhost:3000/api/v1/classify/status
 
-# In another terminal, expose it
-ngrok http 3000
+# Response includes:
+{
+  "service": "Image Classification API",
+  "status": "healthy",
+  "ollama": {
+    "service": { "available": true, "version": "0.1.17" },
+    "model": { "available": true, "name": "moondream", "size": "1.7GB" }
+  },
+  "statistics": {
+    "total_classifications": 1247,
+    "success_rate": "98.4%",
+    "avg_processing_time": "891ms",
+    "last_24h": 89
+  },
+  "capabilities": {
+    "supportedFormats": ["JPEG", "PNG", "GIF", "WebP"],
+    "inputMethods": ["file upload", "base64 string"],
+    "maxImageSize": "10MB",
+    "customPrompts": true
+  }
+}
 ```
 
-Your API will be available at the ngrok URL (e.g., `https://abc123.ngrok.io`)
+---
 
-### Using Docker
+## 🔗 Resources
 
-```bash
-# Build the image
-docker build -t treblle-express-api .
+- **[Treblle](https://treblle.com)** - API Observability Platform
+- **[Treblle Documentation](https://docs.treblle.com)** - Integration guides and API references
+- **[Ollama](https://ollama.com)** - Local AI model runtime
+- **[Moondream Model](https://ollama.com/library/moondream)** - Vision-language model
+- **[Express.js](https://expressjs.com)** - Web framework documentation
+- **[PostgreSQL](https://postgresql.org)** - Database documentation
 
-# Run the container
-docker run -p 3000:3000 --env-file .env treblle-express-api
-```
+---
 
-## 🛠️ Development
-
-### Project Structure
-
-```
-treblle-express-ollama-classifier/
-├── public/
-│   └── index.html             # Beautiful web frontend
-├── app.js                     # Main application setup
-├── server.js                  # Server entry point
-├── data/
-│   └── users.json            # Persistent user storage
-├── routes/
-│   └── classifyRoutes.js     # Classification endpoints
-├── controllers/
-│   └── classifyController.js # Classification logic
-├── services/
-│   └── ollamaService.js      # Ollama integration
-├── auth/
-│   ├── authController.js     # Authentication logic
-│   └── authRoutes.js         # Auth endpoints
-├── middleware/
-│   ├── authMiddleware.js     # JWT verification
-│   ├── rateLimit.js          # Rate limiting configs
-│   ├── ddos.js              # DDoS protection
-│   └── errorHandler.js       # Global error handling
-├── config/
-│   └── .env.example          # Environment template
-├── Dockerfile                # Container configuration
-└── README.md                # This file
-```
-
-**Built with ❤️ by the Treblle DevRel Team**
-
-Ready to build amazing APIs? Get started with [Treblle](https://treblle.com) today!
+*Built with ❤️ by the Treblle team. This starter kit demonstrates best practices for building production-ready APIs with comprehensive monitoring and AI capabilities.*

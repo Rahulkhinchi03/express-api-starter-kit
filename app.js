@@ -1,10 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
 const treblle = require('@treblle/express');
-const path = require('path'); // Add this import
-require('dotenv').config();
+const database = require('./config/database');
+const path = require('path');
 
 // Import routes
 const authRoutes = require('./auth/authRoutes');
@@ -38,6 +39,22 @@ app.use(helmet({
   },
 }));
 
+// Initialize database connection
+const initializeDatabase = async () => {
+  try {
+    await database.connect();
+  } catch (error) {
+    console.error('Failed to initialize database:', error.message);
+    // In development, continue without database
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
+  }
+};
+
+// Initialize database
+initializeDatabase();
+
 // CORS configuration with ngrok support
 const corsOptions = {
   origin: function (origin, callback) {
@@ -45,12 +62,12 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001'
     ];
-    
+
     // Allow ngrok domains
-    if (!origin || 
-        allowedOrigins.indexOf(origin) !== -1 || 
-        (origin && origin.includes('.ngrok')) ||
-        (origin && origin.includes('.ngrok-free.app'))) {
+    if (!origin ||
+      allowedOrigins.indexOf(origin) !== -1 ||
+      (origin && origin.includes('.ngrok')) ||
+      (origin && origin.includes('.ngrok-free.app'))) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -79,20 +96,27 @@ app.use(ddosProtection);
 // Configure Treblle with better error handling
 if (process.env.TREBLLE_API_KEY && process.env.TREBLLE_PROJECT_ID) {
   console.log('🚀 Initializing Treblle monitoring...');
-  
+  console.log('API Key (first 8 chars):', process.env.TREBLLE_API_KEY.substring(0, 8) + '...');
+  console.log('Project ID:', process.env.TREBLLE_PROJECT_ID);
+
   try {
     app.use(treblle({
       apiKey: process.env.TREBLLE_API_KEY,
       projectId: process.env.TREBLLE_PROJECT_ID,
-      additionalFieldsToMask: ['password', 'token', 'authorization'],
-      debug: process.env.NODE_ENV === 'development' // Enable debug in development
+      additionalFieldsToMask: ['password', 'token', 'authorization', 'api_key'],
+      debug: true, // Enable debug mode to see what's being sent
+      showErrors: true, // Show errors if Treblle fails
+      endpoint: 'https://rocknrolla.treblle.com', // Specify endpoint explicitly
     }));
     console.log('✅ Treblle monitoring initialized successfully');
   } catch (error) {
     console.error('❌ Treblle initialization failed:', error.message);
+    console.error('❌ Full error:', error);
   }
 } else {
   console.warn('⚠️  Treblle monitoring disabled - missing credentials');
+  console.log('TREBLLE_API_KEY present:', !!process.env.TREBLLE_API_KEY);
+  console.log('TREBLLE_PROJECT_ID present:', !!process.env.TREBLLE_PROJECT_ID);
 }
 
 // Health check endpoint

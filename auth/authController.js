@@ -1,43 +1,6 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
-const fs = require('fs');
-const path = require('path');
-
-// File-based user storage
-const USERS_FILE = path.join(__dirname, '../data/users.json');
-
-// Ensure data directory exists
-const dataDir = path.dirname(USERS_FILE);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Load users from file
-function loadUsers() {
-  try {
-    if (fs.existsSync(USERS_FILE)) {
-      const data = fs.readFileSync(USERS_FILE, 'utf8');
-      return new Map(Object.entries(JSON.parse(data)));
-    }
-  } catch (error) {
-    console.error('Error loading users:', error.message);
-  }
-  return new Map();
-}
-
-// Save users to file
-function saveUsers(users) {
-  try {
-    const data = JSON.stringify(Object.fromEntries(users), null, 2);
-    fs.writeFileSync(USERS_FILE, data, 'utf8');
-  } catch (error) {
-    console.error('Error saving users:', error.message);
-  }
-}
-
-// Initialize users from file
-const users = loadUsers();
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 // Generate JWT token
 const generateToken = (userId, email) => {
@@ -63,50 +26,33 @@ const register = async (req, res, next) => {
 
     const { email, password, name } = req.body;
 
-    // Check if user already exists
-    if (users.has(email)) {
+    // Create user
+    const user = await User.create({
+      email: email.toLowerCase().trim(),
+      name: name.trim(),
+      password
+    });
+
+    // Generate token
+    const token = generateToken(user.id, user.email);
+
+    console.log(`✅ New user registered: ${user.email} (ID: ${user.id})`);
+
+    res.status(201).json({
+      message: 'User registered successfully',
+      user: user.toSafeObject(),
+      token,
+      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    });
+
+  } catch (error) {
+    if (error.message.includes('already exists')) {
       return res.status(409).json({
         error: 'User already exists',
         message: 'A user with this email already exists. Please try logging in instead.'
       });
     }
 
-    // Hash password with lower salt rounds for faster registration
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Create user
-    const userId = Date.now().toString();
-    const user = {
-      id: userId,
-      email,
-      name,
-      password: hashedPassword,
-      createdAt: new Date().toISOString()
-    };
-
-    // Save user to memory and file
-    users.set(email, user);
-    saveUsers(users);
-
-    // Generate token
-    const token = generateToken(userId, email);
-
-    console.log(`✅ New user registered: ${email}`);
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        id: userId,
-        email,
-        name,
-        createdAt: user.createdAt
-      },
-      token,
-      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-    });
-
-  } catch (error) {
     console.error('Registration error:', error.message);
     next(error);
   }
@@ -127,8 +73,8 @@ const login = async (req, res, next) => {
 
     const { email, password } = req.body;
 
-    // Check if user exists
-    const user = users.get(email);
+    // Find user
+    const user = await User.findByEmail(email.toLowerCase().trim());
     if (!user) {
       return res.status(401).json({
         error: 'Invalid credentials',
@@ -137,7 +83,7 @@ const login = async (req, res, next) => {
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await user.verifyPassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({
         error: 'Invalid credentials',
@@ -145,18 +91,17 @@ const login = async (req, res, next) => {
       });
     }
 
-    // Generate token
-    const token = generateToken(user.id, email);
+    // Update last login
+    await user.updateLastLogin();
 
-    console.log(`✅ User logged in: ${email}`);
+    // Generate token
+    const token = generateToken(user.id, user.email);
+
+    console.log(`✅ User logged in: ${user.email} (ID: ${user.id})`);
 
     res.status(200).json({
       message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
-      },
+      user: user.toSafeObject(),
       token,
       expiresIn: process.env.JWT_EXPIRES_IN || '24h'
     });
@@ -170,8 +115,8 @@ const login = async (req, res, next) => {
 // Get current user profile
 const getProfile = async (req, res, next) => {
   try {
-    const user = users.get(req.user.email);
-    
+    const user = await User.findById(req.user.userId);
+
     if (!user) {
       return res.status(404).json({
         error: 'User not found',
@@ -179,34 +124,207 @@ const getProfile = async (req, res, next) => {
       });
     }
 
+    // Get user's classification count
+    const classificationCount = await user.getClassificationCount();
+
+    const userProfile = user.toSafeObject();
+    userProfile.classification_count = classificationCount;
+
     res.status(200).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        createdAt: user.createdAt
-      }
+      user: userProfile
     });
 
   } catch (error) {
+    console.error('Get profile error:', error.message);
     next(error);
   }
 };
 
-// Get user stats (for debugging)
-const getStats = () => {
-  return {
-    totalUsers: users.size,
-    userEmails: Array.from(users.keys()),
-    storageFile: USERS_FILE
-  };
+// Update user profile
+const updateProfile = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: 'User profile could not be found'
+      });
+    }
+
+    const { name, email } = req.body;
+
+    // Update user
+    await user.update({
+      name: name?.trim(),
+      email: email?.toLowerCase().trim()
+    });
+
+    console.log(`✅ User profile updated: ${user.email} (ID: ${user.id})`);
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: user.toSafeObject()
+    });
+
+  } catch (error) {
+    if (error.message.includes('already in use') || error.message.includes('already exists')) {
+      return res.status(409).json({
+        error: 'Email already in use',
+        message: 'Another user is already using this email address'
+      });
+    }
+
+    console.error('Update profile error:', error.message);
+    next(error);
+  }
 };
 
-console.log(`📊 User storage initialized: ${users.size} users loaded`);
+// Change password
+const changePassword = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: 'User profile could not be found'
+      });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    // Verify current password
+    const isCurrentPasswordValid = await user.verifyPassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({
+        error: 'Invalid password',
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Change password
+    await user.changePassword(newPassword);
+
+    console.log(`✅ Password changed for user: ${user.email} (ID: ${user.id})`);
+
+    res.status(200).json({
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    console.error('Change password error:', error.message);
+    next(error);
+  }
+};
+
+// Regenerate API key
+const regenerateApiKey = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: 'User profile could not be found'
+      });
+    }
+
+    const newApiKey = await user.regenerateApiKey();
+
+    console.log(`✅ API key regenerated for user: ${user.email} (ID: ${user.id})`);
+
+    res.status(200).json({
+      message: 'API key regenerated successfully',
+      api_key: newApiKey
+    });
+
+  } catch (error) {
+    console.error('Regenerate API key error:', error.message);
+    next(error);
+  }
+};
+
+// Get user statistics (for admin or user dashboard)
+const getUserStats = async (req, res, next) => {
+  try {
+    const userId = req.params.userId || req.user.userId;
+
+    // Check if user is requesting their own stats or if they're admin
+    if (userId !== req.user.userId && req.user.email !== 'admin@treblle.com') {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You can only access your own statistics'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    // Get classification stats for this user
+    const Classification = require('../models/Classification');
+    const classificationStats = await Classification.getStats(userId);
+
+    res.status(200).json({
+      user: user.toPublicObject(),
+      statistics: classificationStats
+    });
+
+  } catch (error) {
+    console.error('Get user stats error:', error.message);
+    next(error);
+  }
+};
+
+// Get all users stats (admin only)
+const getAllUsersStats = async (req, res, next) => {
+  try {
+    // Simple admin check - in production, implement proper role-based access
+    if (req.user.email !== 'admin@treblle.com') {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Admin access required'
+      });
+    }
+
+    const stats = await User.getStats();
+
+    res.status(200).json({
+      statistics: stats
+    });
+
+  } catch (error) {
+    console.error('Get all users stats error:', error.message);
+    next(error);
+  }
+};
 
 module.exports = {
   register,
   login,
   getProfile,
-  getStats
+  updateProfile,
+  changePassword,
+  regenerateApiKey,
+  getUserStats,
+  getAllUsersStats
 };
