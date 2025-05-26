@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -322,7 +323,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .error-message {
@@ -342,17 +345,18 @@
             .auth-form {
                 grid-template-columns: 1fr;
             }
-            
+
             .header h1 {
                 font-size: 2rem;
             }
-            
+
             .main-content {
                 padding: 20px;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -371,7 +375,8 @@
                     <div class="form-group">
                         <label for="password">Password</label>
                         <input type="password" id="password" placeholder="Your password" required>
-                        <div class="password-hint">Min 6 characters, must include at least one letter and one number</div>
+                        <div class="password-hint">Min 6 characters, must include at least one letter and one number
+                        </div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -391,18 +396,15 @@
                     <div class="upload-subtext">Supports JPEG, PNG, GIF, WebP • Max 10MB</div>
                 </div>
                 <input type="file" id="fileInput" class="file-input" accept="image/*">
-                
+
                 <div id="imagePreview" class="image-preview hidden">
                     <img id="previewImage" class="preview-image" alt="Preview">
                 </div>
 
                 <div class="prompt-section">
-                    <label for="promptInput">Custom Prompt (Optional)</label>
-                    <textarea 
-                        id="promptInput" 
-                        class="prompt-input" 
-                        placeholder="What would you like to know about this image? (e.g., 'Describe the objects and their colors', 'What type of glass is this?')"
-                    ></textarea>
+                    <label for="promptInput">Custom Prompt</label>
+                    <textarea id="promptInput" class="prompt-input"
+                        placeholder="What would you like to know about this image? (e.g., 'Describe the objects and their colors', 'What type of glass is this?')"></textarea>
                 </div>
 
                 <button id="classifyBtn" class="btn btn-primary" disabled>🔍 Classify Image</button>
@@ -420,7 +422,7 @@
                     <div class="results-icon">✨</div>
                     <h3>Classification Results</h3>
                 </div>
-                
+
                 <div class="classification-result">
                     <div id="classificationText" class="classification-text"></div>
                 </div>
@@ -480,7 +482,7 @@
         }
 
         // Initialize upload handlers after DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             console.log('DOM loaded, setting up upload handlers...');
             setupUploadHandlers();
         });
@@ -488,20 +490,20 @@
         function setupUploadHandlers() {
             const uploadArea = document.getElementById('uploadArea');
             const fileInput = document.getElementById('fileInput');
-            
+
             console.log('Upload area found:', !!uploadArea);
             console.log('File input found:', !!fileInput);
-            
+
             if (uploadArea && fileInput) {
                 // Remove any existing listeners first
                 uploadArea.removeEventListener('click', handleUploadClick);
-                
+
                 // Add new click listener
                 uploadArea.addEventListener('click', handleUploadClick);
-                
+
                 // Add file input change listener
                 fileInput.addEventListener('change', handleFileSelect);
-                
+
                 console.log('Upload handlers set up successfully');
             } else {
                 console.error('Upload elements not found!');
@@ -512,7 +514,7 @@
             console.log('Upload area clicked!');
             e.preventDefault();
             e.stopPropagation();
-            
+
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
                 console.log('Triggering file input click...');
@@ -526,7 +528,7 @@
         loginBtn.addEventListener('click', async () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+
             if (!email || !password) {
                 showAuthStatus('Please fill in all fields', 'error');
                 return;
@@ -561,7 +563,7 @@
         registerBtn.addEventListener('click', async () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+
             if (!email || !password) {
                 showAuthStatus('Please fill in all fields', 'error');
                 return;
@@ -581,9 +583,9 @@
                 const response = await fetch(`${API_BASE}/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        email, 
-                        password, 
+                    body: JSON.stringify({
+                        email,
+                        password,
                         name: email.split('@')[0]
                     })
                 });
@@ -642,7 +644,7 @@
             authStatus.textContent = message;
             authStatus.className = `auth-status ${type}`;
             authStatus.classList.remove('hidden');
-            
+
             setTimeout(() => {
                 authStatus.classList.add('hidden');
             }, 5000);
@@ -654,7 +656,7 @@
             registerBtn.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
             uploadSection.classList.remove('hidden');
-            
+
             // Re-setup upload handlers when upload section becomes visible
             setTimeout(() => {
                 setupUploadHandlers();
@@ -689,7 +691,7 @@
             }
 
             currentImage = file;
-            
+
             // Show preview
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -711,7 +713,7 @@
             try {
                 const formData = new FormData();
                 formData.append('image', currentImage);
-                
+
                 const prompt = promptInput.value.trim();
                 if (prompt) {
                     formData.append('prompt', prompt);
@@ -742,13 +744,13 @@
 
         function displayResults(data) {
             const { result, metadata } = data;
-            
+
             document.getElementById('classificationText').textContent = result.classification;
             document.getElementById('processingTime').textContent = metadata.processingTime;
             document.getElementById('modelUsed').textContent = result.model;
             document.getElementById('imageSize').textContent = metadata.imageSize;
             document.getElementById('timestamp').textContent = new Date(metadata.timestamp).toLocaleString();
-            
+
             resultsSection.classList.remove('hidden');
         }
 
@@ -762,4 +764,5 @@
         }
     </script>
 </body>
+
 </html>

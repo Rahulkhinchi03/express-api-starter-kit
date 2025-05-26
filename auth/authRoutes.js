@@ -15,59 +15,54 @@ const {
 
 const router = express.Router();
 
-// Environment-based validation rules
+// Simplified and more lenient validation rules
 const getPasswordValidation = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // Strong password validation for production
-    return body('password')
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters long')
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-      .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)');
-  } else {
-    // Simplified validation for development
-    return body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters')
-      .matches(/^(?=.*[a-zA-Z])(?=.*\d)/)
-      .withMessage('Password must contain at least one letter and one number');
-  }
+  // Use relaxed validation for all environments to avoid user frustration
+  return body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-zA-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one letter and one number');
 };
 
 const registerValidation = [
   body('email')
     .isEmail()
     .normalizeEmail()
-    .withMessage('Valid email required')
+    .withMessage('Please provide a valid email address')
     .isLength({ max: 254 })
     .withMessage('Email must be less than 254 characters'),
   getPasswordValidation(),
   body('name')
-    .isLength({ min: 2, max: 100 })
+    .optional()
+    .isLength({ min: 1, max: 100 })
     .trim()
-    .escape()
-    .withMessage('Name must be between 2 and 100 characters')
-    .matches(/^[a-zA-Z\s'-]+$/)
-    .withMessage('Name can only contain letters, spaces, hyphens, and apostrophes')
+    .withMessage('Name must be between 1 and 100 characters')
+    .matches(/^[a-zA-Z0-9\s\-'._]+$/)
+    .withMessage('Name can contain letters, numbers, spaces, hyphens, apostrophes, dots, and underscores')
 ];
 
 const loginValidation = [
   body('email')
     .isEmail()
     .normalizeEmail()
-    .withMessage('Valid email required'),
+    .withMessage('Please provide a valid email address'),
   body('password')
     .notEmpty()
-    .withMessage('Password required')
+    .withMessage('Password is required')
     .isLength({ max: 128 })
-    .withMessage('Password too long')
+    .withMessage('Password is too long')
 ];
 
 const changePasswordValidation = [
   body('currentPassword')
     .notEmpty()
     .withMessage('Current password is required'),
-  getPasswordValidation().withMessage('New password does not meet security requirements')
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long')
+    .matches(/^(?=.*[a-zA-Z])(?=.*\d)/)
+    .withMessage('New password must contain at least one letter and one number')
 ];
 
 const updateProfileValidation = [
@@ -80,12 +75,11 @@ const updateProfileValidation = [
     .withMessage('Email must be less than 254 characters'),
   body('name')
     .optional()
-    .isLength({ min: 2, max: 100 })
+    .isLength({ min: 1, max: 100 })
     .trim()
-    .escape()
-    .withMessage('Name must be between 2 and 100 characters')
-    .matches(/^[a-zA-Z\s'-]+$/)
-    .withMessage('Name can only contain letters, spaces, hyphens, and apostrophes')
+    .withMessage('Name must be between 1 and 100 characters')
+    .matches(/^[a-zA-Z0-9\s\-'._]+$/)
+    .withMessage('Name can contain letters, numbers, spaces, hyphens, apostrophes, dots, and underscores')
 ];
 
 // Routes with consistent response format
@@ -102,9 +96,7 @@ router.get('/', (req, res) => {
       ],
       security: {
         environment: process.env.NODE_ENV,
-        passwordRequirements: process.env.NODE_ENV === 'production' ?
-          'Minimum 8 characters with uppercase, lowercase, number, and special character' :
-          'Minimum 6 characters with at least one letter and one number'
+        passwordRequirements: 'Minimum 6 characters with at least one letter and one number'
       }
     },
     meta: {
@@ -136,6 +128,7 @@ router.get('/test', (req, res) => {
 router.post('/register', (req, res, next) => {
   console.log('🔧 Register attempt:', {
     email: req.body.email,
+    name: req.body.name || 'Not provided',
     ip: req.ip,
     userAgent: req.get('User-Agent'),
     timestamp: new Date().toISOString()

@@ -35,6 +35,7 @@ const register = async (req, res, next) => {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json(formatResponse(false, null, 'Validation failed', {
         errors: errors.array()
       }));
@@ -42,10 +43,19 @@ const register = async (req, res, next) => {
 
     const { email, password, name } = req.body;
 
+    // Generate name from email if not provided
+    const userName = name && name.trim() ? name.trim() : email.split('@')[0];
+
+    console.log('📝 Registration data:', {
+      email: email,
+      name: userName,
+      hasPassword: !!password
+    });
+
     // Create user
     const user = await User.create({
       email: email.toLowerCase().trim(),
-      name: name.trim(),
+      name: userName,
       password
     });
 
@@ -54,7 +64,7 @@ const register = async (req, res, next) => {
 
     console.log(`✅ New user registered: ${user.email} (ID: ${user.id})`);
 
-    res.status(201).json(formatResponse(true, {
+    const response = formatResponse(true, {
       user: user.toSafeObject(),
       token,
       auth: {
@@ -64,7 +74,12 @@ const register = async (req, res, next) => {
     }, 'User registered successfully', {
       userId: user.id,
       action: 'register'
-    }));
+    });
+
+    // Add token at top level for frontend compatibility
+    response.token = token;
+
+    res.status(201).json(response);
 
   } catch (error) {
     if (error.message.includes('already exists')) {
@@ -85,12 +100,15 @@ const login = async (req, res, next) => {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Login validation errors:', errors.array());
       return res.status(400).json(formatResponse(false, null, 'Please provide valid email and password', {
         errors: errors.array()
       }));
     }
 
     const { email, password } = req.body;
+
+    console.log('🔐 Login attempt for:', email);
 
     // Find user
     const user = await User.findByEmail(email.toLowerCase().trim());
@@ -117,7 +135,7 @@ const login = async (req, res, next) => {
 
     console.log(`✅ User logged in: ${user.email} (ID: ${user.id})`);
 
-    res.status(200).json(formatResponse(true, {
+    const response = formatResponse(true, {
       user: user.toSafeObject(),
       token,
       auth: {
@@ -128,7 +146,12 @@ const login = async (req, res, next) => {
       userId: user.id,
       action: 'login',
       lastLogin: user.last_login
-    }));
+    });
+
+    // Add token at top level for frontend compatibility
+    response.token = token;
+
+    res.status(200).json(response);
 
   } catch (error) {
     console.error('Login error:', error.message);

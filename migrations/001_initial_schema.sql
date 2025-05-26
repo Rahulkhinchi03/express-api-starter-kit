@@ -76,16 +76,6 @@ CREATE TRIGGER update_users_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
--- Insert a default admin user for testing (password: admin123)
--- Using UUID for API key generation instead of gen_random_bytes
-INSERT INTO users (email, name, password, api_key) VALUES 
-(
-    'admin@treblle.com', 
-    'Admin User', 
-    '$2a$12$9vPw2/FaP3Xk8.pXiS7W.eKq5nH8.YpFpQMNM1JdP7fH3.gH9yNfG', -- admin123
-    'admin_' || replace(uuid_generate_v4()::text, '-', '')
-) ON CONFLICT (email) DO NOTHING;
-
 -- Create view for user statistics
 CREATE VIEW user_stats AS
 SELECT 

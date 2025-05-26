@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const authMiddleware = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return res.status(401).json({
         error: 'Authentication required',
@@ -18,9 +18,9 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
-    const token = authHeader.substring(7);
-    
-    if (!token) {
+    const token = authHeader.substring(7).trim();
+
+    if (!token || token === '') {
       return res.status(401).json({
         error: 'Token not provided',
         message: 'Please provide a valid Bearer token'
@@ -29,15 +29,23 @@ const authMiddleware = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
+
+    console.log(`✅ Token verified for user: ${decoded.userId} (${decoded.email})`);
     next();
   } catch (error) {
+    console.error('❌ Auth middleware error:', {
+      message: error.message,
+      name: error.name,
+      token: req.headers.authorization ? 'Present' : 'Missing'
+    });
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         error: 'Token expired',
         message: 'Please login again to get a new token'
       });
     }
-    
+
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         error: 'Invalid token',
