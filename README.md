@@ -1,17 +1,17 @@
 # 🚀 Treblle Express Ollama Classifier API
 
-A production-ready Express.js API starter kit featuring AI-powered image classification with Ollama Moondream, complete authentication, security, and monitoring with Treblle.
+A production-ready Express.js API starter kit featuring AI-powered image classification with [Ollama Moondream](https://ollama.com/library/moondream), complete authentication, security, and monitoring with Treblle.
 
 ## ✨ Features
 
-- 🔍 **AI Image Classification** - Powered by Ollama Moondream for local image analysis
+- 🔍 **AI Image Classification** - Powered by [Ollama Moondream](https://ollama.com/library/moondream) for local image analysis
 - 🔐 **JWT Authentication** - Secure user registration and login
 - 🛡️ **Enterprise Security** - Helmet, CORS, rate limiting, and DDoS protection
-- 📊 **Real-time Monitoring** - Treblle integration for API observability
+- 📊 **Real-time Monitoring** - [Treblle integration](https://docs.treblle.com/integrations/javascript/express/) for API observability
 - 🚦 **Rate Limiting** - Intelligent request limiting based on endpoint sensitivity
 - 📸 **Flexible Image Input** - Support for file uploads and base64 strings
 - 🐳 **Docker Ready** - Containerized for consistent deployments
-- 📚 **Auto Documentation** - Self-documenting API endpoints
+- 📚 **Auto Documentation** - Self-documenting API endpoints by Treblle [API Documentation](https://treblle.com/product/api-documentation)
 
 ## 🏗️ Architecture
 
