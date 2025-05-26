@@ -11,17 +11,33 @@ const generateToken = (userId, email) => {
   );
 };
 
+// Standard response format helper
+const formatResponse = (success, data, message = null, meta = {}) => {
+  const response = {
+    success,
+    data,
+    meta: {
+      timestamp: new Date().toISOString(),
+      ...meta
+    }
+  };
+
+  if (message) {
+    response.message = message;
+  }
+
+  return response;
+};
+
 // Register user
 const register = async (req, res, next) => {
   try {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors.array(),
-        message: 'Please check your input and try again'
-      });
+      return res.status(400).json(formatResponse(false, null, 'Validation failed', {
+        errors: errors.array()
+      }));
     }
 
     const { email, password, name } = req.body;
@@ -38,19 +54,24 @@ const register = async (req, res, next) => {
 
     console.log(`✅ New user registered: ${user.email} (ID: ${user.id})`);
 
-    res.status(201).json({
-      message: 'User registered successfully',
+    res.status(201).json(formatResponse(true, {
       user: user.toSafeObject(),
       token,
-      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-    });
+      auth: {
+        expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+        tokenType: 'Bearer'
+      }
+    }, 'User registered successfully', {
+      userId: user.id,
+      action: 'register'
+    }));
 
   } catch (error) {
     if (error.message.includes('already exists')) {
-      return res.status(409).json({
-        error: 'User already exists',
-        message: 'A user with this email already exists. Please try logging in instead.'
-      });
+      return res.status(409).json(formatResponse(false, null, 'A user with this email already exists. Please try logging in instead.', {
+        action: 'register',
+        conflict: 'email'
+      }));
     }
 
     console.error('Registration error:', error.message);
@@ -64,11 +85,9 @@ const login = async (req, res, next) => {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors.array(),
-        message: 'Please provide valid email and password'
-      });
+      return res.status(400).json(formatResponse(false, null, 'Please provide valid email and password', {
+        errors: errors.array()
+      }));
     }
 
     const { email, password } = req.body;
@@ -76,19 +95,18 @@ const login = async (req, res, next) => {
     // Find user
     const user = await User.findByEmail(email.toLowerCase().trim());
     if (!user) {
-      return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'No account found with this email. Please register first.'
-      });
+      return res.status(401).json(formatResponse(false, null, 'No account found with this email. Please register first.', {
+        action: 'login',
+        suggestion: 'register'
+      }));
     }
 
     // Verify password
     const isPasswordValid = await user.verifyPassword(password);
     if (!isPasswordValid) {
-      return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Incorrect password. Please try again.'
-      });
+      return res.status(401).json(formatResponse(false, null, 'Incorrect password. Please try again.', {
+        action: 'login'
+      }));
     }
 
     // Update last login
@@ -99,12 +117,18 @@ const login = async (req, res, next) => {
 
     console.log(`✅ User logged in: ${user.email} (ID: ${user.id})`);
 
-    res.status(200).json({
-      message: 'Login successful',
+    res.status(200).json(formatResponse(true, {
       user: user.toSafeObject(),
       token,
-      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-    });
+      auth: {
+        expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+        tokenType: 'Bearer'
+      }
+    }, 'Login successful', {
+      userId: user.id,
+      action: 'login',
+      lastLogin: user.last_login
+    }));
 
   } catch (error) {
     console.error('Login error:', error.message);
@@ -118,10 +142,9 @@ const getProfile = async (req, res, next) => {
     const user = await User.findById(req.user.userId);
 
     if (!user) {
-      return res.status(404).json({
-        error: 'User not found',
-        message: 'User profile could not be found'
-      });
+      return res.status(404).json(formatResponse(false, null, 'User profile could not be found', {
+        userId: req.user.userId
+      }));
     }
 
     // Get user's classification count
@@ -130,9 +153,12 @@ const getProfile = async (req, res, next) => {
     const userProfile = user.toSafeObject();
     userProfile.classification_count = classificationCount;
 
-    res.status(200).json({
+    res.status(200).json(formatResponse(true, {
       user: userProfile
-    });
+    }, null, {
+      userId: user.id,
+      action: 'getProfile'
+    }));
 
   } catch (error) {
     console.error('Get profile error:', error.message);
@@ -146,18 +172,16 @@ const updateProfile = async (req, res, next) => {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors.array()
-      });
+      return res.status(400).json(formatResponse(false, null, 'Validation failed', {
+        errors: errors.array()
+      }));
     }
 
     const user = await User.findById(req.user.userId);
     if (!user) {
-      return res.status(404).json({
-        error: 'User not found',
-        message: 'User profile could not be found'
-      });
+      return res.status(404).json(formatResponse(false, null, 'User profile could not be found', {
+        userId: req.user.userId
+      }));
     }
 
     const { name, email } = req.body;
@@ -170,17 +194,19 @@ const updateProfile = async (req, res, next) => {
 
     console.log(`✅ User profile updated: ${user.email} (ID: ${user.id})`);
 
-    res.status(200).json({
-      message: 'Profile updated successfully',
+    res.status(200).json(formatResponse(true, {
       user: user.toSafeObject()
-    });
+    }, 'Profile updated successfully', {
+      userId: user.id,
+      action: 'updateProfile'
+    }));
 
   } catch (error) {
     if (error.message.includes('already in use') || error.message.includes('already exists')) {
-      return res.status(409).json({
-        error: 'Email already in use',
-        message: 'Another user is already using this email address'
-      });
+      return res.status(409).json(formatResponse(false, null, 'Another user is already using this email address', {
+        conflict: 'email',
+        action: 'updateProfile'
+      }));
     }
 
     console.error('Update profile error:', error.message);
@@ -194,18 +220,16 @@ const changePassword = async (req, res, next) => {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors.array()
-      });
+      return res.status(400).json(formatResponse(false, null, 'Validation failed', {
+        errors: errors.array()
+      }));
     }
 
     const user = await User.findById(req.user.userId);
     if (!user) {
-      return res.status(404).json({
-        error: 'User not found',
-        message: 'User profile could not be found'
-      });
+      return res.status(404).json(formatResponse(false, null, 'User profile could not be found', {
+        userId: req.user.userId
+      }));
     }
 
     const { currentPassword, newPassword } = req.body;
@@ -213,10 +237,9 @@ const changePassword = async (req, res, next) => {
     // Verify current password
     const isCurrentPasswordValid = await user.verifyPassword(currentPassword);
     if (!isCurrentPasswordValid) {
-      return res.status(401).json({
-        error: 'Invalid password',
-        message: 'Current password is incorrect'
-      });
+      return res.status(401).json(formatResponse(false, null, 'Current password is incorrect', {
+        action: 'changePassword'
+      }));
     }
 
     // Change password
@@ -224,9 +247,10 @@ const changePassword = async (req, res, next) => {
 
     console.log(`✅ Password changed for user: ${user.email} (ID: ${user.id})`);
 
-    res.status(200).json({
-      message: 'Password changed successfully'
-    });
+    res.status(200).json(formatResponse(true, null, 'Password changed successfully', {
+      userId: user.id,
+      action: 'changePassword'
+    }));
 
   } catch (error) {
     console.error('Change password error:', error.message);
@@ -239,20 +263,21 @@ const regenerateApiKey = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) {
-      return res.status(404).json({
-        error: 'User not found',
-        message: 'User profile could not be found'
-      });
+      return res.status(404).json(formatResponse(false, null, 'User profile could not be found', {
+        userId: req.user.userId
+      }));
     }
 
     const newApiKey = await user.regenerateApiKey();
 
     console.log(`✅ API key regenerated for user: ${user.email} (ID: ${user.id})`);
 
-    res.status(200).json({
-      message: 'API key regenerated successfully',
+    res.status(200).json(formatResponse(true, {
       api_key: newApiKey
-    });
+    }, 'API key regenerated successfully', {
+      userId: user.id,
+      action: 'regenerateApiKey'
+    }));
 
   } catch (error) {
     console.error('Regenerate API key error:', error.message);
@@ -267,27 +292,30 @@ const getUserStats = async (req, res, next) => {
 
     // Check if user is requesting their own stats or if they're admin
     if (userId !== req.user.userId && req.user.email !== 'admin@treblle.com') {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'You can only access your own statistics'
-      });
+      return res.status(403).json(formatResponse(false, null, 'You can only access your own statistics', {
+        action: 'getUserStats',
+        forbidden: true
+      }));
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({
-        error: 'User not found'
-      });
+      return res.status(404).json(formatResponse(false, null, 'User not found', {
+        userId: userId
+      }));
     }
 
     // Get classification stats for this user
     const Classification = require('../models/Classification');
     const classificationStats = await Classification.getStats(userId);
 
-    res.status(200).json({
+    res.status(200).json(formatResponse(true, {
       user: user.toPublicObject(),
       statistics: classificationStats
-    });
+    }, null, {
+      userId: user.id,
+      action: 'getUserStats'
+    }));
 
   } catch (error) {
     console.error('Get user stats error:', error.message);
@@ -300,17 +328,20 @@ const getAllUsersStats = async (req, res, next) => {
   try {
     // Simple admin check - in production, implement proper role-based access
     if (req.user.email !== 'admin@treblle.com') {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Admin access required'
-      });
+      return res.status(403).json(formatResponse(false, null, 'Admin access required', {
+        action: 'getAllUsersStats',
+        adminOnly: true
+      }));
     }
 
     const stats = await User.getStats();
 
-    res.status(200).json({
+    res.status(200).json(formatResponse(true, {
       statistics: stats
-    });
+    }, null, {
+      adminId: req.user.userId,
+      action: 'getAllUsersStats'
+    }));
 
   } catch (error) {
     console.error('Get all users stats error:', error.message);

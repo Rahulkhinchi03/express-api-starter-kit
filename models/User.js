@@ -1,7 +1,24 @@
 const database = require('../config/database');
 const bcrypt = require('bcryptjs');
 
+/**
+ * User model for authentication and profile management
+ * @class User
+ */
 class User {
+    /**
+     * Create a User instance
+     * @param {Object} data - User data object
+     * @param {number} data.id - User ID
+     * @param {string} data.email - User email address
+     * @param {string} data.name - User display name
+     * @param {string} data.password - Hashed password
+     * @param {Date} data.created_at - Account creation timestamp
+     * @param {Date} data.updated_at - Last update timestamp
+     * @param {Date} data.last_login - Last login timestamp
+     * @param {boolean} data.is_active - Account active status
+     * @param {string} data.api_key - Generated API key for authentication
+     */
     constructor(data = {}) {
         this.id = data.id;
         this.email = data.email;
@@ -14,13 +31,21 @@ class User {
         this.api_key = data.api_key;
     }
 
-    // Create new user
+    /**
+     * Creates a new user with hashed password and generated API key
+     * @param {Object} userData - User registration data
+     * @param {string} userData.email - User email address
+     * @param {string} userData.name - User display name
+     * @param {string} userData.password - Plain text password (will be hashed)
+     * @returns {Promise<User>} Newly created user instance
+     * @throws {Error} If email already exists or validation fails
+     */
     static async create({ email, name, password }) {
         try {
-            // Hash password
+            // Hash password using bcrypt with salt rounds of 12
             const hashedPassword = await bcrypt.hash(password, 12);
 
-            // Generate API key
+            // Generate secure random API key
             const apiKey = require('crypto').randomBytes(32).toString('hex');
 
             const query = `
@@ -39,7 +64,11 @@ class User {
         }
     }
 
-    // Find user by email
+    /**
+     * Finds an active user by email address
+     * @param {string} email - User email address
+     * @returns {Promise<User|null>} User instance or null if not found
+     */
     static async findByEmail(email) {
         try {
             const query = 'SELECT * FROM users WHERE email = $1 AND is_active = true';
@@ -51,7 +80,11 @@ class User {
         }
     }
 
-    // Find user by ID
+    /**
+     * Finds an active user by ID
+     * @param {number} id - User ID
+     * @returns {Promise<User|null>} User instance or null if not found
+     */
     static async findById(id) {
         try {
             const query = 'SELECT * FROM users WHERE id = $1 AND is_active = true';
@@ -63,7 +96,11 @@ class User {
         }
     }
 
-    // Find user by API key
+    /**
+     * Finds an active user by API key
+     * @param {string} apiKey - User API key
+     * @returns {Promise<User|null>} User instance or null if not found
+     */
     static async findByApiKey(apiKey) {
         try {
             const query = 'SELECT * FROM users WHERE api_key = $1 AND is_active = true';
@@ -75,7 +112,11 @@ class User {
         }
     }
 
-    // Verify password
+    /**
+     * Verifies a plain text password against the stored hash
+     * @param {string} password - Plain text password to verify
+     * @returns {Promise<boolean>} True if password matches, false otherwise
+     */
     async verifyPassword(password) {
         try {
             return await bcrypt.compare(password, this.password);
@@ -84,7 +125,10 @@ class User {
         }
     }
 
-    // Update last login
+    /**
+     * Updates the user's last login timestamp
+     * @returns {Promise<Date>} Updated last login timestamp
+     */
     async updateLastLogin() {
         try {
             const query = `
@@ -102,7 +146,14 @@ class User {
         }
     }
 
-    // Update user profile
+    /**
+     * Updates user profile information
+     * @param {Object} updateData - Data to update
+     * @param {string} [updateData.name] - New display name
+     * @param {string} [updateData.email] - New email address
+     * @returns {Promise<User>} Updated user instance
+     * @throws {Error} If email is already in use by another user
+     */
     async update({ name, email }) {
         try {
             const query = `
@@ -131,7 +182,11 @@ class User {
         }
     }
 
-    // Change password
+    /**
+     * Changes the user's password
+     * @param {string} newPassword - New plain text password
+     * @returns {Promise<User>} Updated user instance
+     */
     async changePassword(newPassword) {
         try {
             const hashedPassword = await bcrypt.hash(newPassword, 12);
@@ -151,7 +206,10 @@ class User {
         }
     }
 
-    // Regenerate API key
+    /**
+     * Generates a new API key for the user
+     * @returns {Promise<string>} New API key
+     */
     async regenerateApiKey() {
         try {
             const newApiKey = require('crypto').randomBytes(32).toString('hex');
@@ -172,7 +230,10 @@ class User {
         }
     }
 
-    // Deactivate user (soft delete)
+    /**
+     * Deactivates the user account (soft delete)
+     * @returns {Promise<User>} Updated user instance
+     */
     async deactivate() {
         try {
             const query = `
@@ -190,7 +251,10 @@ class User {
         }
     }
 
-    // Get user statistics
+    /**
+     * Gets aggregate statistics for all users
+     * @returns {Promise<Object>} User statistics object
+     */
     static async getStats() {
         try {
             const query = `
@@ -209,7 +273,10 @@ class User {
         }
     }
 
-    // Get user's classification history count
+    /**
+     * Gets the total number of classifications for this user
+     * @returns {Promise<number>} Classification count
+     */
     async getClassificationCount() {
         try {
             const query = `
@@ -225,7 +292,10 @@ class User {
         }
     }
 
-    // Convert to safe object (without password)
+    /**
+     * Converts user instance to safe object (excludes password)
+     * @returns {Object} Safe user object for API responses
+     */
     toSafeObject() {
         return {
             id: this.id,
@@ -239,7 +309,10 @@ class User {
         };
     }
 
-    // Convert to public object (minimal info)
+    /**
+     * Converts user instance to public object (minimal info for public display)
+     * @returns {Object} Public user object
+     */
     toPublicObject() {
         return {
             id: this.id,

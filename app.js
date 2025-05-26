@@ -39,21 +39,57 @@ app.use(helmet({
   },
 }));
 
-// Initialize database connection
+// Initialize database connection with proper error handling
 const initializeDatabase = async () => {
   try {
     await database.connect();
+    console.log('✅ Database connection established successfully');
   } catch (error) {
-    console.error('Failed to initialize database:', error.message);
-    // In development, continue without database
+    console.error('❌ Failed to initialize database:', error.message);
+
     if (process.env.NODE_ENV === 'production') {
+      console.error('💀 Database is required in production. Exiting...');
       process.exit(1);
+    } else {
+      console.warn('⚠️  Database unavailable in development mode');
+      console.warn('📝 API will run with limited functionality');
+      console.warn('🔧 Please check your database configuration and connection');
+
+      // Set a flag to indicate database is unavailable
+      app.locals.databaseAvailable = false;
+
+      // Add middleware to handle database-dependent routes
+      app.use('/api/v1/auth', (req, res, next) => {
+        if (!app.locals.databaseAvailable) {
+          return res.status(503).json({
+            error: 'Service temporarily unavailable',
+            message: 'Database connection required for authentication',
+            suggestion: 'Please check database configuration'
+          });
+        }
+        next();
+      });
+
+      app.use('/api/v1/classify', (req, res, next) => {
+        if (!app.locals.databaseAvailable && req.path !== '/status') {
+          return res.status(503).json({
+            error: 'Service temporarily unavailable',
+            message: 'Database connection required for classification storage',
+            suggestion: 'Please check database configuration'
+          });
+        }
+        next();
+      });
     }
   }
 };
 
 // Initialize database
-initializeDatabase();
+initializeDatabase().then(() => {
+  if (app.locals.databaseAvailable === undefined) {
+    app.locals.databaseAvailable = true;
+  }
+});
 
 // CORS configuration with ngrok support
 const corsOptions = {
@@ -119,13 +155,17 @@ if (process.env.TREBLLE_API_KEY && process.env.TREBLLE_PROJECT_ID) {
   console.log('TREBLLE_PROJECT_ID present:', !!process.env.TREBLLE_PROJECT_ID);
 }
 
-// Health check endpoint
+// Health check endpoint with database status
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     environment: process.env.NODE_ENV,
+    database: {
+      available: app.locals.databaseAvailable || false,
+      status: app.locals.databaseAvailable ? 'connected' : 'unavailable'
+    },
     treblle: {
       enabled: !!(process.env.TREBLLE_API_KEY && process.env.TREBLLE_PROJECT_ID),
       apiKey: process.env.TREBLLE_API_KEY ? 'Set' : 'Missing',
@@ -145,6 +185,10 @@ app.get('/api/v1', (req, res) => {
     version: '1.0.0',
     description: 'AI-powered image classification API with Ollama Moondream integration',
     documentation: 'https://docs.treblle.com',
+    status: {
+      database: app.locals.databaseAvailable ? 'available' : 'unavailable',
+      limitations: app.locals.databaseAvailable ? [] : ['Authentication disabled', 'Classification storage disabled']
+    },
     endpoints: {
       auth: {
         register: 'POST /api/v1/auth/register',

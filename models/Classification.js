@@ -66,8 +66,8 @@ class Classification {
         WHERE c.id = $1
       `;
 
-            const queryResult = await database.query(query, [id]);
-            return queryResult.rows[0] ? new Classification(queryResult.rows[0]) : null;
+            const result = await database.query(query, [id]);
+            return result.rows[0] ? new Classification(result.rows[0]) : null;
         } catch (error) {
             throw error;
         }
@@ -93,8 +93,8 @@ class Classification {
             query += ` ORDER BY c.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
             params.push(limit, offset);
 
-            const queryResult = await database.query(query, params);
-            return queryResult.rows.map(row => new Classification(row));
+            const result = await database.query(query, params);
+            return result.rows.map(row => new Classification(row));
         } catch (error) {
             throw error;
         }
@@ -119,8 +119,8 @@ class Classification {
             query += ` ORDER BY c.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
             params.push(limit, offset);
 
-            const queryResult = await database.query(query, params);
-            return queryResult.rows.map(row => new Classification(row));
+            const result = await database.query(query, params);
+            return result.rows.map(row => new Classification(row));
         } catch (error) {
             throw error;
         }
@@ -150,8 +150,8 @@ class Classification {
                 params.push(userId);
             }
 
-            const queryResult = await database.query(query, params);
-            const stats = queryResult.rows[0];
+            const result = await database.query(query, params);
+            const stats = result.rows[0];
 
             // Convert to numbers and format
             return {
@@ -188,8 +188,8 @@ class Classification {
         ORDER BY usage_count DESC
       `;
 
-            const queryResult = await database.query(query);
-            return queryResult.rows.map(row => ({
+            const result = await database.query(query);
+            return result.rows.map(row => ({
                 model: row.model_used,
                 usage_count: parseInt(row.usage_count),
                 avg_processing_time: Math.round(parseFloat(row.avg_processing_time)),
@@ -221,8 +221,8 @@ class Classification {
             query += ` ORDER BY c.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
             params.push(limit, offset);
 
-            const queryResult = await database.query(query, params);
-            return queryResult.rows.map(row => new Classification(row));
+            const result = await database.query(query, params);
+            return result.rows.map(row => new Classification(row));
         } catch (error) {
             throw error;
         }
@@ -238,8 +238,8 @@ class Classification {
         RETURNING *
       `;
 
-            const queryResult = await database.query(query, [status, errorMessage, this.id]);
-            const updated = queryResult.rows[0];
+            const result = await database.query(query, [status, errorMessage, this.id]);
+            const updated = result.rows[0];
 
             this.status = updated.status;
             this.error_message = updated.error_message;

@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const ollamaService = require('../services/ollamaService');
 const Classification = require('../models/Classification');
 const User = require('../models/User');
+const database = require('../config/database');
 
 // Classify image endpoint
 const classifyImage = async (req, res, next) => {
@@ -59,10 +60,10 @@ const classifyImage = async (req, res, next) => {
 
     console.log(`Processing image classification for user: ${req.user.email} (Hash: ${imageHash.substring(0, 8)}...)`);
 
-    let classificationRecord;
-    try {
-      // Create initial classification record
-      classificationRecord = await Classification.create({
+    // Use database transaction to prevent race conditions
+    const result = await database.transaction(async (client) => {
+      // Create initial classification record with 'processing' status
+      const classificationRecord = await Classification.create({
         userId: req.user.userId,
         imageHash,
         imageSize,
@@ -75,53 +76,53 @@ const classifyImage = async (req, res, next) => {
         status: 'processing'
       });
 
-      // Call Ollama service
-      const result = await ollamaService.classifyImage(imageBase64, prompt);
+      let ollamaResult;
+      try {
+        // Call Ollama service
+        ollamaResult = await ollamaService.classifyImage(imageBase64, prompt);
 
-      const processingTime = Date.now() - startTime;
+        const processingTime = Date.now() - startTime;
 
-      // Update classification record with results
-      classificationRecord.result = result.classification;
-      classificationRecord.confidence = 'High'; // Moondream doesn't provide confidence scores
-      classificationRecord.processing_time_ms = processingTime;
-      classificationRecord.status = 'completed';
+        // Update classification record with results in the same transaction
+        await client.query(
+          'UPDATE classifications SET result = $1, confidence = $2, processing_time_ms = $3, status = $4 WHERE id = $5',
+          [ollamaResult.classification, 'High', processingTime, 'completed', classificationRecord.id]
+        );
 
-      // Save updated record
-      await classificationRecord.updateStatus('completed');
-      await Classification.query(
-        'UPDATE classifications SET result = $1, confidence = $2, processing_time_ms = $3 WHERE id = $4',
-        [result.classification, 'High', processingTime, classificationRecord.id]
-      );
+        console.log(`✅ Classification completed in ${processingTime}ms for user: ${req.user.email}`);
 
-      console.log(`✅ Classification completed in ${processingTime}ms for user: ${req.user.email}`);
+        return {
+          success: true,
+          result: {
+            classification: ollamaResult.classification,
+            confidence: 'High',
+            detectedObjects: ollamaResult.classification,
+            model: ollamaResult.model,
+            prompt: ollamaResult.prompt
+          },
+          metadata: {
+            processingTime: `${processingTime}ms`,
+            ollamaProcessingTime: ollamaResult.processingTime ? `${ollamaResult.processingTime}ms` : null,
+            userId: req.user.userId,
+            classificationId: classificationRecord.id,
+            timestamp: new Date().toISOString(),
+            imageSize: `${Math.round(imageSize / 1024)} KB`,
+            imageHash: imageHash.substring(0, 16) // Partial hash for reference
+          }
+        };
 
-      res.status(200).json({
-        success: true,
-        result: {
-          classification: result.classification,
-          confidence: 'High',
-          detectedObjects: result.classification,
-          model: result.model,
-          prompt: result.prompt
-        },
-        metadata: {
-          processingTime: `${processingTime}ms`,
-          ollamaProcessingTime: result.processingTime ? `${result.processingTime}ms` : null,
-          userId: req.user.userId,
-          classificationId: classificationRecord.id,
-          timestamp: new Date().toISOString(),
-          imageSize: `${Math.round(imageSize / 1024)} KB`,
-          imageHash: imageHash.substring(0, 16) // Partial hash for reference
-        }
-      });
+      } catch (ollamaError) {
+        // Update classification record with error status in the same transaction
+        await client.query(
+          'UPDATE classifications SET status = $1, error_message = $2 WHERE id = $3',
+          ['error', ollamaError.message, classificationRecord.id]
+        );
 
-    } catch (ollamaError) {
-      // Update classification record with error
-      if (classificationRecord) {
-        await classificationRecord.updateStatus('error', ollamaError.message);
+        throw ollamaError;
       }
-      throw ollamaError;
-    }
+    });
+
+    res.status(200).json(result);
 
   } catch (error) {
     console.error('Classification error:', error.message);
