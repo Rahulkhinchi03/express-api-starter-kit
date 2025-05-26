@@ -3,7 +3,15 @@ const multer = require('multer');
 const { body } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const { classifyRateLimiter } = require('../middleware/rateLimit');
-const { classifyImage, getStatus, getSamples } = require('../controllers/classifyController');
+const {
+  classifyImage,
+  getStatus,
+  getSamples,
+  getHistory,
+  getClassification,
+  deleteClassification,
+  searchClassifications
+} = require('../controllers/classifyController');
 
 const router = express.Router();
 
@@ -68,6 +76,18 @@ router.get('/', (req, res) => {
         method: 'GET',
         path: '/api/v1/classify/samples',
         description: 'Get example requests and usage tips'
+      },
+      history: {
+        method: 'GET',
+        path: '/api/v1/classify/history',
+        description: 'Get user classification history with pagination',
+        authentication: 'Bearer token required'
+      },
+      search: {
+        method: 'GET',
+        path: '/api/v1/classify/search',
+        description: 'Search classifications by content',
+        authentication: 'Bearer token required'
       }
     },
     features: [
@@ -76,7 +96,8 @@ router.get('/', (req, res) => {
       'Support for JPEG, PNG, GIF, WebP formats',
       'Real-time processing with Ollama Moondream',
       'Detailed response metadata',
-      'Rate limiting and authentication'
+      'Rate limiting and authentication',
+      'Classification history and search'
     ]
   });
 });
@@ -95,6 +116,18 @@ router.get('/status', getStatus);
 
 // Sample requests endpoint
 router.get('/samples', getSamples);
+
+// Classification history endpoint
+router.get('/history', authMiddleware, getHistory);
+
+// Get specific classification
+router.get('/:id', authMiddleware, getClassification);
+
+// Delete classification
+router.delete('/:id', authMiddleware, deleteClassification);
+
+// Search classifications
+router.get('/search', authMiddleware, searchClassifications);
 
 // Error handler for multer - consistent with global error handler format
 router.use((error, req, res, next) => {
