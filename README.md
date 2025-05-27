@@ -36,15 +36,25 @@ npm install
 ### 2. Database Setup
 
 ```bash
-# Install PostgreSQL (Ubuntu/Debian)
-sudo apt-get install postgresql postgresql-contrib
+# Install Homebrew (if not already installed)
+[ -x "$(command -v brew)" ] || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install PostgreSQL
+brew install postgresql
+
+# Start PostgreSQL as a background service
+brew services start postgresql
+
+# Add PostgreSQL to PATH (Apple Silicon)
+echo 'export PATH="/opt/homebrew/opt/postgresql/bin:$PATH"' >> ~/.zprofile
+source ~/.zprofile
 
 # Create database and user
-sudo -u postgres psql
-postgres=# CREATE DATABASE treblle_api;
-postgres=# CREATE USER treblle_user WITH PASSWORD 'secure_password';
-postgres=# GRANT ALL PRIVILEGES ON DATABASE treblle_api TO treblle_user;
-postgres=# \q
+psql postgres <<EOF
+CREATE DATABASE treblle_api;
+CREATE USER treblle_user WITH PASSWORD 'secure_password';
+GRANT ALL PRIVILEGES ON DATABASE treblle_api TO treblle_user;
+EOF
 ```
 
 ### 3. Environment Configuration
