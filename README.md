@@ -243,20 +243,6 @@ The API automatically tracks **all requests** through Treblle, providing:
 - 📱 **User Behavior** - API usage patterns and trends
 - 🌍 **Geographic Analytics** - Request distribution mapping
 
-### Treblle Dashboard Screenshots
-
-![Treblle API Overview](https://docs.treblle.com/images/dashboard-overview.png)
-
-*Real-time API performance monitoring with detailed metrics and insights*
-
-![Treblle Request Details](https://docs.treblle.com/images/request-details.png)
-
-*Comprehensive request/response analysis with payload inspection*
-
-![Treblle Error Tracking](https://docs.treblle.com/images/error-tracking.png)
-
-*Advanced error tracking with stack traces and context*
-
 ### Setup Treblle Monitoring
 
 1. **Create Account**: Visit [treblle.com](https://treblle.com) and sign up
@@ -270,62 +256,7 @@ TREBLLE_API_KEY=your_treblle_api_key_here
 TREBLLE_PROJECT_ID=your_treblle_project_id_here
 ```
 
-The integration is **zero-configuration** - simply restart your API and visit your Treblle dashboard to see live data flowing in.
-
----
-
-## 🤖 AI Image Classification Logic
-
-### Ollama Moondream Integration
-
-The AI classification feature uses **Ollama with the Moondream model** for local, private image analysis. This approach ensures:
-
-- 🔒 **Privacy**: Images never leave your server
-- ⚡ **Speed**: Local processing without API calls
-- 💰 **Cost-effective**: No per-request charges
-- 🛡️ **Reliability**: No external dependencies
-
-### How It Works
-
-#### 1. Image Processing Pipeline
-
-```javascript
-// 1. Image Input (File Upload or Base64)
-const imageBuffer = req.file.buffer || Buffer.from(base64, 'base64');
-
-// 2. Generate Hash for Deduplication
-const imageHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
-
-// 3. Create Database Record
-const classification = await Classification.create({
-  userId, imageHash, imageSize, imageType, prompt,
-  status: 'processing'
-});
-
-// 4. Send to Ollama
-const result = await ollamaService.classifyImage(imageBase64, prompt);
-
-// 5. Store Results
-await classification.updateResults(result);
-```
-
-#### 2. Moondream Model Capabilities
-
-- **Vision-Language Model**: Understands both images and text prompts
-- **Object Detection**: Identifies objects, people, scenes, and contexts
-- **Descriptive Analysis**: Provides detailed descriptions beyond simple labels
-- **Custom Prompts**: Responds to specific questions about images
-- **Multi-format Support**: JPEG, PNG, GIF, WebP
-
-#### 3. Example Classifications
-
-**Input**: Product photo of a wine glass
-**Prompt**: "What type of glass is this? Be specific about style and purpose."
-**Result**: "This is a burgundy wine glass with a large, rounded bowl designed for red wines. The wide bowl allows for proper aeration and the stem prevents hand warming of the wine."
-
-**Input**: Street scene photo
-**Prompt**: "Describe the scene and atmosphere"
-**Result**: "A busy urban street during golden hour with pedestrians walking along the sidewalk. Modern buildings line both sides with warm lighting from storefronts creating an inviting evening atmosphere."
+The integration is zero-configuration. Restart your API and visit your Treblle dashboard to see live data flowing in.
 
 ---
 
@@ -342,28 +273,6 @@ curl -X POST http://localhost:3000/api/v1/auth/register \
     "password": "SecurePass123!",
     "name": "Developer"
   }'
-
-# Response:
-{
-  "message": "User registered successfully",
-  "user": {
-    "id": 1,
-    "email": "developer@example.com",
-    "name": "Developer",
-    "api_key": "a1b2c3d4e5f6...",
-    "created_at": "2024-01-15T10:30:00Z"
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "expiresIn": "24h"
-}
-
-# 2. Login existing user
-curl -X POST http://localhost:3000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "developer@example.com",
-    "password": "SecurePass123!"
-  }'
 ```
 
 ### Image Classification Examples
@@ -376,46 +285,6 @@ curl -X POST http://localhost:3000/api/v1/classify/image \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -F "image=@path/to/your/image.jpg" \
   -F "prompt=What type of wine glass is this?"
-
-# Response:
-{
-  "success": true,
-  "result": {
-    "classification": "This is a burgundy wine glass with a large, rounded bowl designed for red wines. The wide bowl allows for proper aeration of the wine.",
-    "confidence": "High",
-    "model": "moondream",
-    "prompt": "What type of wine glass is this?"
-  },
-  "metadata": {
-    "processingTime": "1247ms",
-    "userId": 1,
-    "classificationId": 42,
-    "timestamp": "2024-01-15T10:35:22Z",
-    "imageSize": "156 KB",
-    "imageHash": "a7f3c8e9d2b1f4a6"
-  }
-}
-```
-
-#### Base64 Method
-
-```javascript
-// JavaScript example with base64 image
-const classifyImage = async (imageBase64, prompt) => {
-  const response = await fetch('http://localhost:3000/api/v1/classify/image', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${yourJwtToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      image: imageBase64, // or data:image/jpeg;base64,<base64-string>
-      prompt: prompt || "Describe this image in detail"
-    })
-  });
-  
-  return await response.json();
-};
 ```
 
 ### Getting Classification History
@@ -433,40 +302,6 @@ curl -X GET "http://localhost:3000/api/v1/classify/search?q=wine+glass&limit=5" 
 curl -X GET "http://localhost:3000/api/v1/classify/42" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
-
-### Health Check & Status
-
-```bash
-# Check API health
-curl -X GET http://localhost:3000/api/v1/health
-
-# Get classification service status
-curl -X GET http://localhost:3000/api/v1/classify/status
-
-# Response includes:
-{
-  "service": "Image Classification API",
-  "status": "healthy",
-  "ollama": {
-    "service": { "available": true, "version": "0.1.17" },
-    "model": { "available": true, "name": "moondream", "size": "1.7GB" }
-  },
-  "statistics": {
-    "total_classifications": 1247,
-    "success_rate": "98.4%",
-    "avg_processing_time": "891ms",
-    "last_24h": 89
-  },
-  "capabilities": {
-    "supportedFormats": ["JPEG", "PNG", "GIF", "WebP"],
-    "inputMethods": ["file upload", "base64 string"],
-    "maxImageSize": "10MB",
-    "customPrompts": true
-  }
-}
-```
-
----
 
 ## 🔗 Resources
 
